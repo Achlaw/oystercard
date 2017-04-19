@@ -1,7 +1,9 @@
 require 'oystercard'
 
 describe Oystercard do
-let(:station){double :station}
+let(:entry_station){double :station}
+let(:exit_station){double :station}
+let(:set_journey){ { entry_station: entry_station, exit_station: exit_station } }
 
   it 'has empty journey history' do
     expect(subject.journey_history).to be_empty
@@ -9,10 +11,9 @@ let(:station){double :station}
 
   it 'records journey' do
     subject.top_up(1)
-    subject.touch_in(station)
-    subject.touch_out(station)
-    expect(subject.journey_history).to_not be_empty
-    p subject.journey_history
+    subject.touch_in(entry_station)
+    subject.touch_out(exit_station)
+    expect(subject.journey_history).to include set_journey
   end
 
   it 'has a balance of zero' do
@@ -20,8 +21,6 @@ let(:station){double :station}
   end
 
   describe '#top_up' do
-  	it { is_expected.to respond_to(:top_up).with(1).argument }
-
     it 'raise error when over balance limit' do
       expect{ subject.top_up(91) }.to raise_error "ERROR: balance over maximum limit of #{described_class::MAX_BALANCE}"
     end
@@ -30,58 +29,48 @@ let(:station){double :station}
   describe '#deduct' do
     it 'should deduct from balance' do
       subject.top_up(6)
-      subject.touch_out(station)
-      expect(subject.balance).to eq 5
+      subject.touch_in(entry_station)
+      expect{ subject.touch_out(exit_station)}.to change { subject.balance }.by -described_class::MIN_BALANCE
     end
   end
 
   describe '#touch_in' do
     #let (:station){double(:station)}
 
-    it 'gives status touched in' do
-      subject.top_up(described_class::MIN_BALANCE)
-      subject.touch_in(station)
-      expect(subject.status).to eq "Touched in."
-    end
     it 'gives error when balance is insufficient' do
-      expect{ subject.touch_in(station) }.to raise_error "Insufficient balance."
+      expect{ subject.touch_in(entry_station) }.to raise_error "Insufficient balance."
     end
     it 'records point of entry' do
       subject.top_up(1)
-      subject.touch_in(station)
-      expect(subject.entry_station).to eq station
+      subject.touch_in(entry_station)
+      expect(subject.entry_station).to eq entry_station
     end
 
     it 'forgets point of entry' do
       subject.top_up(1)
-      subject.touch_in(station)
-      subject.touch_out(station)
-      expect(subject.exit_station).to eq station
-    end
-  end
-
-  describe '#touch_out' do
-    it 'gives status touched out' do
-      subject.top_up(described_class::MIN_BALANCE)
-      subject.touch_in(station)
-      subject.touch_out(station)
-      expect(subject.status).to eq "Touched out."
+      subject.touch_in(entry_station)
+      subject.touch_out(exit_station)
+      expect(subject.entry_station).to eq nil
     end
 
     it 'deducts balance after #touch_out' do
-      expect { subject.touch_out(station) }.to change{ subject.balance }.by(-1)
+      expect { subject.touch_out(exit_station) }.to change{ subject.balance }.by(-1)
     end
   end
 
   describe '#in_journey?' do
-    it 'returns true when touched in' do
+    before do
       subject.top_up(described_class::MIN_BALANCE)
-      subject.touch_in(station)
-      should be_in_journey
+      subject.touch_in(entry_station)
+    end
+
+    it 'returns true when touched in' do
+      expect(subject).to be_in_journey
     end
 
     it 'returns false when touched out' do
-      expect(subject.in_journey?).to eq false
+      subject.touch_out(exit_station)
+      expect(subject).to_not be_in_journey
     end
   end
 

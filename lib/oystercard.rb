@@ -3,11 +3,10 @@ class Oystercard
   MAX_BALANCE = 90
   MIN_BALANCE = 1
 
-  attr_reader :balance, :status, :entry_station, :exit_station, :journey_history
+  attr_reader :balance, :entry_station, :exit_station, :journey_history
 
   def initialize
   	@balance = 0
-    @status = "New card."
     @journey_history = []
   end
 
@@ -19,27 +18,22 @@ class Oystercard
 
   def touch_in(entry_station)
     fail "Insufficient balance." if @balance < MIN_BALANCE
-    @status = "Touched in."
     @entry_station = entry_station
   end
 
   def touch_out(exit_station)
-    deduct(1)
-    @status = "Touched out."
+    deduct(MIN_BALANCE)
     @exit_station = exit_station
     journey_record
+    @entry_station = nil
   end
 
   def in_journey?
-    #return true if @status == "Touched in." # true and false not required because == is already compairing
-    #false
     @entry_station != nil
   end
 
   def journey_record
-    journey = {}
-    journey[entry_station] = exit_station
-    @journey_history << journey
+    @journey_history << { entry_station: @entry_station, exit_station: @exit_station }
   end
 
   private
